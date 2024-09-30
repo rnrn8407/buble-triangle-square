@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>sato-toro</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            background-color: #f0f0f0;
+        }
+
+        .shape {
+            position: absolute;
+            transition: transform 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .circle {
+            border-radius: 50%;
+        }
+
+        .square {
+            border-radius: 0;
+        }
+
+        .triangle {
+            width: 0 !important;
+            height: 0 !important;
+            background: none !important;
+        }
+
+        .pattern {
+            position: absolute;
+            width: 60%;
+            height: 60%;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        const shapeCount = 50;
+        const shapes = [];
+
+        function createShape() {
+            const shape = document.createElement('div');
+            shape.classList.add('shape');
+            const size = Math.random() * 50 + 30;
+            shape.style.width = `${size}px`;
+            shape.style.height = `${size}px`;
+            shape.style.left = `${Math.random() * (window.innerWidth - size)}px`;
+            shape.style.top = `${Math.random() * (window.innerHeight - size)}px`;
+            shape.speedX = (Math.random() - 0.5) * 2;
+            shape.speedY = (Math.random() - 0.5) * 2;
+            shape.hue = Math.random() * 360;
+            shape.hueSpeed = (Math.random() - 0.5) * 0.5;
+
+            // 形状の選択
+            const shapeType = Math.floor(Math.random() * 3);
+            switch(shapeType) {
+                case 0:
+                    shape.classList.add('circle');
+                    break;
+                case 1:
+                    shape.classList.add('square');
+                    break;
+                case 2:
+                    shape.classList.add('triangle');
+                    shape.style.borderLeft = `${size/2}px solid transparent`;
+                    shape.style.borderRight = `${size/2}px solid transparent`;
+                    shape.style.borderBottom = `${size}px solid`;
+                    break;
+            }
+
+            // パターンの追加
+            const pattern = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            pattern.classList.add('pattern');
+            pattern.setAttribute('viewBox', '0 0 100 100');
+
+            if (Math.random() < 0.5) {
+                // 波線パターン
+                const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                path.setAttribute('d', 'M0 50 Q25 0, 50 50 T100 50');
+                path.setAttribute('fill', 'none');
+                path.setAttribute('stroke', 'rgba(255,255,255,0.5)');
+                path.setAttribute('stroke-width', '5');
+                pattern.appendChild(path);
+            } else {
+                // 十字パターン
+                const line1 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line1.setAttribute('x1', '0');
+                line1.setAttribute('y1', '50');
+                line1.setAttribute('x2', '100');
+                line1.setAttribute('y2', '50');
+                line1.setAttribute('stroke', 'rgba(255,255,255,0.5)');
+                line1.setAttribute('stroke-width', '5');
+                pattern.appendChild(line1);
+
+                const line2 = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line2.setAttribute('x1', '50');
+                line2.setAttribute('y1', '0');
+                line2.setAttribute('x2', '50');
+                line2.setAttribute('y2', '100');
+                line2.setAttribute('stroke', 'rgba(255,255,255,0.5)');
+                line2.setAttribute('stroke-width', '5');
+                pattern.appendChild(line2);
+            }
+
+            shape.appendChild(pattern);
+            updateGradient(shape);
+            document.body.appendChild(shape);
+            return shape;
+        }
+
+        function updateGradient(shape) {
+            shape.hue += shape.hueSpeed;
+            if (shape.hue > 360) shape.hue -= 360;
+            if (shape.hue < 0) shape.hue += 360;
+            const hue1 = shape.hue;
+            const hue2 = (shape.hue + 30) % 360;
+            const hue3 = (shape.hue + 60) % 360;
+            const gradient = `
+                radial-gradient(circle at 30% 30%,
+                hsl(${hue1}, 100%, 50%) 0%,
+                hsl(${hue2}, 100%, 50%) 50%,
+                hsl(${hue3}, 100%, 50%) 100%)
+            `;
+            if (shape.classList.contains('triangle')) {
+                shape.style.borderBottomColor = `hsl(${hue1}, 100%, 50%)`;
+            } else {
+                shape.style.background = gradient;
+            }
+        }
+
+        function moveShapes() {
+            shapes.forEach(shape => {
+                let x = parseFloat(shape.style.left);
+                let y = parseFloat(shape.style.top);
+                let size = parseFloat(shape.style.width);
+
+                x += shape.speedX;
+                y += shape.speedY;
+
+                if (x <= 0 || x + size >= window.innerWidth) {
+                    shape.speedX *= -1;
+                    x = Math.max(0, Math.min(x, window.innerWidth - size));
+                }
+                if (y <= 0 || y + size >= window.innerHeight) {
+                    shape.speedY *= -1;
+                    y = Math.max(0, Math.min(y, window.innerHeight - size));
+                }
+
+                shape.style.left = `${x}px`;
+                shape.style.top = `${y}px`;
+
+                updateGradient(shape);
+            });
+            requestAnimationFrame(moveShapes);
+        }
+
+        function handleMouseMove(e) {
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+
+            shapes.forEach(shape => {
+                const rect = shape.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                const distance = Math.hypot(mouseX - centerX, mouseY - centerY);
+                const maxDistance = 200;
+
+                if (distance < maxDistance) {
+                    const scale = 1 + (1 - distance / maxDistance) * 1.5;
+                    shape.style.transform = `scale(${scale})`;
+                } else {
+                    shape.style.transform = 'scale(1)';
+                }
+            });
+        }
+
+        function init() {
+            for (let i = 0; i < shapeCount; i++) {
+                shapes.push(createShape());
+            }
+            moveShapes();
+            document.addEventListener('mousemove', handleMouseMove);
+        }
+
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
